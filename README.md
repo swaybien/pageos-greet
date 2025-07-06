@@ -12,9 +12,9 @@ Rust 语言编写的登录界面服务器。包含一个最小网页服务器和
 
 ```sh
 pageos-greet \
-  --port 12800 \
+  --port 12801 \
   --page /path/to/login.html \
-  --launch-command "cage -s -- firefox --kiosk --no-remote http://localhost:12800/login" \
+  --launch-command "cage -s -- firefox --kiosk http://localhost:12801/login" \
   --session-command "pageos-core -p 12800 --command \"cage -s -- firefox --kiosk --no-remote http://localhost:12800\""
 ```
 
