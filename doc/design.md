@@ -1,131 +1,130 @@
-# 终端 Greeter 实现设计
+# 网页 Greeter 实现设计
 
-## 1. 状态机流程图
+## 1. 架构设计
 
 ```mermaid
-stateDiagram-v2
-    [*] --> 建立连接
-    建立连接 --> 创建会话 : 发送CreateSession
-    创建会话 --> 认证处理 : 收到AuthMessage
-    认证处理 --> 认证处理 : 多轮认证交互
-    创建会话 --> 启动会话准备 : 收到Success
-    创建会话 --> 错误处理 : 收到Error
-    认证处理 --> 启动会话准备 : 收到Success
-    认证处理 --> 错误处理 : 收到Error
-    启动会话准备 --> 启动会话 : 发送StartSession
-    错误处理 --> 创建会话 : 发送CancelSession后重试
-    启动会话 --> [*]
+graph TD
+    A[Web浏览器] -->|HTTP/WebSocket| B[Web服务器]
+    B -->|UNIX Socket| C[greetd服务]
+    B --> D[内嵌HTML资源]
 ```
 
-## 2. 核心数据结构
+## 2. 状态机流程图
 
-### IPC 消息枚举
+```mermaid
+flowchart TD
+    subgraph pageos-greet
+        START@{ shape: circle, label: "开始" } --> SERV[启动网页服务器]
+        SERV -->|启动成功| BROW[启动图形界面和浏览器]
+        START --> INIT[和 greetd 建立连接]
+        SESS[创建 greetd 会话]
+        SESS -->|发送 CreateSession 到 greetd| V[认证处理]
+        SESS -->|从 greetd 收到 Success| PREP[启动会话准备]
+        SESS -->|从 greetd 收到 Error| ERR[错误处理]
+        V -->|从 greetd 收到 Success| PREP
+        V -->|从 greetd 收到 Error| ERR
+        PREP -->|发送 StartSession 到 greetd| BOOT[启动会话]
+        ERR -->|发送 CancelSession 到 greetd 后重试| SESS
+        BOOT --> STOP@{ shape: dbl-circ, label: "结束" }
+    end
 
-```rust
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "type")]
-enum IpcMessage {
-    CreateSession { username: String },
-    AuthMessage {
-        auth_message_type: AuthType,
-        auth_message: String
-    },
-    PostAuthMessageResponse { response: String },
-    StartSession { cmd: Vec<String>, env: Vec<String> },
-    CancelSession,
-    Success,
-    Error { description: String }
+    subgraph 浏览器网页
+        BROW -->|提供| DOM(网页加载)
+        DOM -->|加载| UN[页面要求输入用户名]
+        UN -->|“用户名信息”，且服务端已与 greetd 建立连接| SESS
+        V -->|“提示信息”| AM[页面要求根据提示信息操作]
+        AM -->|“用户根据提示信息提供的数据”| V
+        ERR --> SHOW[显示错误信息或信息]
+    end
+```
+
+## 3. Web 服务器实现
+
+### 核心组件
+
+- HTTP 服务器 (axum/warp)
+- WebSocket 连接管理
+- greetd IPC 客户端
+- 会话状态机
+
+### 端口配置
+
+- 默认监听: 12801
+- 可配置绑定地址
+
+## 4. TODO API 设计
+
+服务端返回当前认证状态:
+
+```json
+{
+  "type": "Visible|Secret|Info|Error",
+  "message": "提示信息"
 }
 ```
 
-### Greeter 状态控制
+> 因为 greetd 具体要获取信息未知，所以将 greetd 提供的提示（message）显示给用户，
+> 让用户根据提示输入数据（用户名、密码、字符密钥等）。
 
-```rust
-struct GreeterState {
-    retry_count: u8,
-    username: String,
-    starting_session: bool, // 会话启动标志
-}
+浏览器网页提交用户响应:
 
-// 状态通过控制流实现
-```
-
-## 3. 终端交互逻辑
-
-### 主控制循环
-
-```rust
-fn main_loop() -> Result<()> {
-    let mut state = GreeterState::new();
-
-    while !state.is_terminal() {
-        match current_phase {
-            Phase::Initial => connect_to_greetd(),
-            Phase::SessionCreation => send_create_session(),
-            Phase::Authentication => handle_auth_message(),
-            Phase::SessionStart => send_start_session(),
-            Phase::Error => handle_error_retry(),
-        }
-    }
-    Ok(())
+```json
+{
+  "response": "用户输入"
 }
 ```
 
-## 4. 错误处理策略
+## 5. 前端实现方案
 
-### 统一错误处理
+### 内嵌 HTML
 
 ```rust
-fn handle_error(state: &mut GreeterState, error: &io::Error) {
-    match error.kind() {
-        io::ErrorKind::PermissionDenied => {
-            // 认证错误立即重试
-            state.retry_count += 1;
-        }
-        io::ErrorKind::ConnectionRefused => {
-            // 连接错误使用指数退避
-            let delay = RETRY_DELAY * 2u64.pow(state.retry_count as u32);
-            sleep(Duration::from_secs(delay));
-            state.retry_count += 1;
-        }
-        _ => {
-            // 其他错误终止会话
-            state.terminal = true;
-        }
-    }
+const INDEX_HTML: &str = r#"
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>PageOS Greeter</title>
+    <script>
+      // WebSocket 客户端代码
+    </script>
+  </head>
+  <body>
+    <!-- 登录表单 -->
+  </body>
+</html>
+"#;
+```
+
+### 交互流程
+
+1. 页面加载后连接 WebSocket
+2. 显示当前状态信息
+3. 根据状态类型显示相应输入控件
+4. 提交用户输入到接口
+
+## 6. 与现有代码的集成
+
+### 修改点
+
+1. 将 main.rs 拆分为:
+
+   - server.rs (Web 服务器)
+   - ipc.rs (greetd 通信)
+   - state.rs (会话状态机)
+
+2. 共享核心逻辑:
+
+```rust
+async fn handle_auth_message(
+    msg: AuthMessage
+) -> Result<Response, Error> {
+    // 复用现有认证处理逻辑
 }
 ```
 
-## 5. 新增功能说明
+## 7. 安全考虑
 
-### 指数退避重试机制
-
-```rust
-// 网络错误重试策略
-for retry in 0..MAX_RETRIES {
-    match connect() {
-        Ok(stream) => break,
-        Err(_) => {
-            let delay = RETRY_DELAY * 2u64.pow(retry as u32);
-            sleep(Duration::from_secs(delay));
-        }
-    }
-}
-```
-
-### 环境变量过滤
-
-```rust
-// 安全环境变量白名单
-let safe_env = vec!["LANG", "PATH", "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY"];
-let env: Vec<String> = env::vars()
-    .filter(|(k, _)| safe_env.contains(&k.as_str()))
-    .map(|(k, v)| format!("{k}={v}"))
-    .collect();
-```
-
-## 6. 会话启动优化
-
-- 使用 `starting_session` 标志替代 `ReadyToStart` 状态
-- 环境变量自动继承当前会话安全值
-- VT 号码自动检测（通过 `XDG_VTNR`）
+- 仅允许本地访问(127.0.0.1)
+- CSRF 保护
+- 输入验证
+- 会话超时
