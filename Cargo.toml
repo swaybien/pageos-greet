@@ -1,6 +1,6 @@
 [package]
 name = "pageos-greet"
-version = "0.2.1"
+version = "1.0.0"
 authors = ["PJ568 <pj568@pj568.eu.org>"]
 edition = "2024"
 license = "MPL-2.0"
@@ -11,8 +11,13 @@ keywords = ["greetd", "login", "web-server", "authentication"]
 categories = ["web-programming", "authentication"]
 
 [dependencies]
-tokio = { version = "1.37", features = ["full"] }
+tokio = { version = "1.37", features = ["full", "rt-multi-thread", "macros"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 greetd_ipc = { version = "0.10", features = ["tokio-codec"] }
-rpassword = "7.4"
+axum = { version = "0.8", features = ["ws"] }
+tokio-websockets = "0.11"
+clap = { version = "4.5", features = ["derive"] }
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

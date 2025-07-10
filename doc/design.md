@@ -9,122 +9,199 @@ graph TD
     B --> D[内嵌HTML资源]
 ```
 
-## 2. 状态机流程图
+## 2. 职责划分
 
-```mermaid
-flowchart TD
-    subgraph pageos-greet
-        START@{ shape: circle, label: "开始" } --> SERV[启动网页服务器]
-        SERV -->|启动成功| BROW[启动图形界面和浏览器]
-        START --> INIT[和 greetd 建立连接]
-        SESS[创建 greetd 会话]
-        SESS -->|发送 CreateSession 到 greetd| V[认证处理]
-        SESS -->|从 greetd 收到 Success| PREP[启动会话准备]
-        SESS -->|从 greetd 收到 Error| ERR[错误处理]
-        V -->|从 greetd 收到 Success| PREP
-        V -->|从 greetd 收到 Error| ERR
-        PREP -->|发送 StartSession 到 greetd| BOOT[启动会话]
-        ERR -->|发送 CancelSession 到 greetd 后重试| SESS
-        BOOT --> STOP@{ shape: dbl-circ, label: "结束" }
-    end
+### Rust 部分职责
 
-    subgraph 浏览器网页
-        BROW -->|提供| DOM(网页加载)
-        DOM -->|加载| UN[页面要求输入用户名]
-        UN -->|“用户名信息”，且服务端已与 greetd 建立连接| SESS
-        V -->|“提示信息”| AM[页面要求根据提示信息操作]
-        AM -->|“用户根据提示信息提供的数据”| V
-        ERR --> SHOW[显示错误信息或信息]
-    end
-```
+- 启动 HTTP 服务器 (使用 axum)
+- 处理 WebSocket 连接
+- 转发 greetd-ipc 协议消息
+- 会话生命周期管理
+- 参数和环境变量处理
 
-## 3. Web 服务器实现
+### HTML/JS 部分职责
 
-### 核心组件
+- 用户界面展示
+- 登录流程状态机
+- 处理用户输入和服务器响应
+- 错误处理和重试逻辑
 
-- HTTP 服务器 (axum/warp)
-- WebSocket 连接管理
-- greetd IPC 客户端
-- 会话状态机
+## 3. WebSocket 接口设计
 
-### 端口配置
-
-- 默认监听: 12801
-- 可配置绑定地址
-
-## 4. TODO API 设计
-
-服务端返回当前认证状态:
-
-```json
-{
-  "type": "Visible|Secret|Info|Error",
-  "message": "提示信息"
-}
-```
-
-> 因为 greetd 具体要获取信息未知，所以将 greetd 提供的提示（message）显示给用户，
-> 让用户根据提示输入数据（用户名、密码、字符密钥等）。
-
-浏览器网页提交用户响应:
-
-```json
-{
-  "response": "用户输入"
-}
-```
-
-## 5. 前端实现方案
-
-### 内嵌 HTML
+### 消息格式
 
 ```rust
-const INDEX_HTML: &str = r#"
+// WebSocket 消息格式
+enum WsMessage {
+    // 从客户端到服务器
+    AuthRequest { username: String },
+    AuthResponse { response: String },
+    StartSession { cmd: Vec<String>, env: Vec<String> },
+
+    // 从服务器到客户端
+    AuthMessage { message: String, message_type: String },
+    AuthSuccess,
+    AuthError { reason: String },
+}
+```
+
+### 消息转换层
+
+```rust
+// WebSocket消息 -> greetd IPC请求
+fn ws_to_ipc(msg: WsMessage) -> Result<Request, Error> {
+    match msg {
+        WsMessage::AuthRequest { username } =>
+            Ok(Request::CreateSession { username }),
+        WsMessage::AuthResponse { response } =>
+            Ok(Request::PostAuthMessageResponse { response: Some(response) }),
+        WsMessage::StartSession { cmd, env } =>
+            Ok(Request::StartSession { cmd, env }),
+        _ => Err(Error::InvalidMessage)
+    }
+}
+
+// greetd IPC响应 -> WebSocket消息
+fn ipc_to_ws(resp: Response) -> WsMessage {
+    match resp {
+        Response::AuthMessage { auth_message_type, auth_message } =>
+            WsMessage::AuthMessage {
+                message_type: auth_message_type.to_string(),
+                message: auth_message
+            },
+        Response::Success => WsMessage::AuthSuccess,
+        Response::Error { error_type, description } =>
+            WsMessage::AuthError { reason: description },
+    }
+}
+```
+
+## 4. 交互流程图
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Server
+    participant greetd
+    Browser->>Server: 连接 WebSocket
+    Browser->>Server: 发送用户名
+    Server->>greetd: CreateSession
+    greetd->>Server: AuthMessage
+    Server->>Browser: 转发认证提示
+    Browser->>Server: 发送认证响应
+    Server->>greetd: PostAuthMessageResponse
+    greetd->>Server: Success
+    Server->>Browser: 转发成功消息
+    Browser->>Server: 发送启动会话命令
+    Server->>greetd: StartSession
+```
+
+## 5. 内嵌 HTML 实现方案
+
+### 状态机实现 (HTML/JS)
+
+```javascript
+// 登录流程状态机
+class AuthStateMachine {
+  constructor(ws) {
+    this.ws = ws;
+    this.state = "INITIAL";
+  }
+
+  handleMessage(msg) {
+    switch (this.state) {
+      case "INITIAL":
+        if (msg.type === "AUTH_PROMPT") {
+          this.state = "AUTHENTICATING";
+          showPrompt(msg);
+        }
+        break;
+      case "AUTHENTICATING":
+        if (msg.type === "AUTH_SUCCESS") {
+          this.state = "READY";
+          showSuccess();
+        } else if (msg.type === "AUTH_ERROR") {
+          this.state = "ERROR";
+          showError(msg.reason);
+        }
+        break;
+      // 其他状态处理...
+    }
+  }
+}
+```
+
+### 基本 HTML 结构
+
+```html
 <!DOCTYPE html>
 <html>
   <head>
     <title>PageOS Greeter</title>
     <script>
-      // WebSocket 客户端代码
+      // WebSocket客户端和状态机实现
+      const ws = new WebSocket("ws://localhost:12801");
+      const stateMachine = new AuthStateMachine(ws);
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        stateMachine.handleMessage(msg);
+      };
     </script>
   </head>
   <body>
-    <!-- 登录表单 -->
+    <div id="auth-container">
+      <div id="prompt"></div>
+      <input id="response-input" type="text" />
+      <button id="submit-btn">提交</button>
+      <div id="status-log"></div>
+    </div>
   </body>
 </html>
-"#;
 ```
 
-### 交互流程
+## 6. 代码组织
 
-1. 页面加载后连接 WebSocket
-2. 显示当前状态信息
-3. 根据状态类型显示相应输入控件
-4. 提交用户输入到接口
+### 文件结构
 
-## 6. 与现有代码的集成
+- `server.rs` - Web 服务器和路由
+- `ipc.rs` - greetd IPC 通信
+- `handlers.rs` - WebSocket 消息处理
+- `main.rs` - 程序入口和配置
 
-### 修改点
-
-1. 将 main.rs 拆分为:
-
-   - server.rs (Web 服务器)
-   - ipc.rs (greetd 通信)
-   - state.rs (会话状态机)
-
-2. 共享核心逻辑:
+### Rust 端简化示例
 
 ```rust
-async fn handle_auth_message(
-    msg: AuthMessage
-) -> Result<Response, Error> {
-    // 复用现有认证处理逻辑
+async fn handle_websocket(ws: WebSocket, ipc_conn: UnixStream) {
+    // 简单的消息转发循环
+    while let Some(msg) = ws.next().await {
+        let ipc_msg = ws_to_ipc(msg)?;
+        ipc_msg.write_to(&mut ipc_conn).await?;
+        let resp = Response::read_from(&mut ipc_conn).await?;
+        let ws_msg = ipc_to_ws(resp);
+        ws.send(ws_msg).await?;
+    }
 }
 ```
 
-## 7. 安全考虑
+## 7. 参数处理
+
+- 使用 clap 处理命令行参数：
+
+```rust
+#[derive(Parser)]
+struct Args {
+    #[arg(short, long, default_value = "12801")]
+    port: u16,
+
+    #[arg(short, long)]
+    session_command: Option<String>,
+}
+```
+
+## 8. 安全考虑
 
 - 仅允许本地访问(127.0.0.1)
 - CSRF 保护
-- 输入验证
 - 会话超时
+- 环境变量过滤（仅传递安全变量）
