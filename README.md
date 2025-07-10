@@ -24,7 +24,7 @@ pageos-greet \
 
 ```toml
 [default_session]
-command = "bash -c 'mkdir -p /tmp/pageos-greet; export HOME=/tmp/pageos-greet; pageos-greet --command \"cage -s -- firefox --kiosk --no-remote http://127.0.0.1:12801\" --session-command \"pageos-core -p 12800 --command \\"cage -s -- firefox --kiosk --no-remote http://127.0.0.1:12800\\"\"'"
+command = "bash -c 'mkdir -p /tmp/pageos-greet; export HOME=/tmp/pageos-greet; pageos-greet --launch-command \"cage -s -- firefox --kiosk --no-remote http://127.0.0.1:12801\" --session-command \"pageos-core -p 12800 --command \\"cage -s -- firefox --kiosk --no-remote http://127.0.0.1:12800\\"\"'"
 ```
 
 ## 指标
