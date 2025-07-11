@@ -1,4 +1,4 @@
-# greetd-ipc 协议
+# greetd-ipc 协议解析记录
 
 - PJ568：
 

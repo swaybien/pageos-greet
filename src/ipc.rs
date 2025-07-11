@@ -36,26 +36,26 @@ pub enum WsMessage {
 
 #[derive(Error, Debug)]
 pub enum IpcError {
-    #[error("IPC连接错误: {0}")]
+    #[error("IPC 连接错误: {0}")]
     Connection(#[from] std::io::Error),
     #[error("消息序列化错误: {0}")]
     Serialization(#[from] serde_json::Error),
     #[error("协议错误: {0}")]
     Protocol(String),
-    #[error("WebSocket错误: {0}")]
+    #[error("WebSocket 错误: {0}")]
     WebSocket(String),
-    #[error("IPC协议错误: {0}")]
+    #[error("IPC 协议错误: {0}")]
     IpcProtocol(#[from] greetd_ipc::codec::Error),
 }
 
 /// 连接到 greetd IPC 服务
 pub async fn connect_to_greetd() -> Result<UnixStream, IpcError> {
     let sock_path = env::var("GREETD_SOCK")
-        .map_err(|_| IpcError::Protocol("GREETD_SOCK环境变量未设置".into()))?;
+        .map_err(|_| IpcError::Protocol("GREETD_SOCK 环境变量未设置".into()))?;
     UnixStream::connect(&sock_path).await.map_err(Into::into)
 }
 
-/// WebSocket消息 -> greetd IPC请求
+/// WebSocket 消息 -> greetd IPC 请求
 pub fn ws_to_ipc(msg: WsMessage) -> Result<Request, IpcError> {
     match msg {
         WsMessage::AuthRequest { username } => Ok(Request::CreateSession { username }),
@@ -63,7 +63,7 @@ pub fn ws_to_ipc(msg: WsMessage) -> Result<Request, IpcError> {
             response: Some(response),
         }),
         WsMessage::StartSession { cmd, env } => Ok(Request::StartSession { cmd, env }),
-        _ => Err(IpcError::Protocol("无效的WebSocket消息类型".into())),
+        _ => Err(IpcError::Protocol("无效的 WebSocket 消息类型".into())),
     }
 }
 
@@ -110,6 +110,13 @@ pub async fn handle_websocket(
             .map_err(IpcError::from)?;
         let ws_msg = ipc_to_ws(resp);
         let json = serde_json::to_string(&ws_msg)?;
+
+        // 如果是 StartSession 成功响应，则退出进程
+        if let WsMessage::AuthSuccess = ws_msg {
+            if let Request::StartSession { .. } = ipc_msg {
+                std::process::exit(0);
+            }
+        }
 
         ws.send(axum::extract::ws::Message::Text(json.into()))
             .await

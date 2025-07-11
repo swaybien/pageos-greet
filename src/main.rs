@@ -26,6 +26,10 @@ struct Args {
     /// 启动子进程命令 (父进程退出时会自动终止子进程)
     #[arg(short, long)]
     launch_command: Option<String>,
+
+    /// 自定义 HTML 页面路径
+    #[arg(long)]
+    page: Option<std::path::PathBuf>,
 }
 
 #[tokio::main]
@@ -63,7 +67,14 @@ async fn main() {
 
     // 启动服务器
     info!("启动服务器，监听端口: {}", args.port);
-    if let Err(e) = run_server(args.port).await {
+    let html_content = match args.page {
+        Some(path) => std::fs::read_to_string(path).unwrap_or_else(|_| {
+            error!("无法读取自定义HTML文件，使用默认页面");
+            "none".to_string()
+        }),
+        None => "none".to_string(),
+    };
+    if let Err(e) = run_server(args.port, html_content).await {
         error!("服务器启动失败: {}", e);
         process::exit(1);
     }

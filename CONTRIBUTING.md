@@ -33,3 +33,11 @@
 - 对于较大的新功能，你需要先提交 Issues，例如 “【新增】添加 XXX 功能”，确认该功能有被添加的必要后，再开始工作；
 - 对于一些主观的样式、交互逻辑调整：如颜色、图标的使用，某些预设配置的增减修改等，一般不予通过。但可以在 Discussions 中进行讨论；
 - 其他如简单的代码优化、文档修正等，只要修改合理都会被接受。
+
+## 设计文档
+
+- [网页 Greeter 实现设计](doc/design.md)
+- [greetd-agreety 技术实现解析](doc/greetd-agreety.md)
+- [greetd-ipc 协议解析记录](doc/greetd-ipc.md)
+- [提示词](doc/prompt.md)
+- [tuigreet 技术实现解析](doc/tuigreet.md)
