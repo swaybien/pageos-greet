@@ -64,8 +64,12 @@ _不是哥们，那我要怎么适配我的页面或 Scratch 以使用 pageos-gr
    }
    ```
 2. 接口适配：保证您的页面或项目中包含所有的显示（输出）和输入控件并适配了登录逻辑和消息格式；
-
-   可参考[示例网页](doc/login.html)和[适配详解](doc/design-adapter.md)
+   可参考：
+   
+   - [示例网页](doc/login.html)
+   - [适配详解](doc/design-adapter.md)
+   - [Turbowarp 扩展](src/pageos-greet-extension.js)
+   - [Scrach 适配细则](doc/Scrach%20适配细则.txt)
 
 ## 项目信息
 

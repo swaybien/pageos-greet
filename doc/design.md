@@ -45,6 +45,14 @@ enum WsMessage {
 }
 ```
 
+### 协议映射表
+
+| WebSocket 消息类型 | IPC 请求类型            | 字段映射             |
+| ------------------ | ----------------------- | -------------------- |
+| AUTH_REQUEST       | CreateSession           | username ←→ username |
+| AUTH_RESPONSE      | PostAuthMessageResponse | response ←→ response |
+| START_SESSION      | StartSession            | cmd/env ←→ cmd/env   |
+
 ### 消息转换层
 
 ```rust

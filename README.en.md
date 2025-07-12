@@ -68,8 +68,11 @@ Yes! Bro! You just need to do these two things:
 
 2. **Interface Adaptation**: Ensure your page/project contains all display (output) and input controls, and adapts to the login logic/message format.
    Reference:
+
    - [Example web page](doc/login.html)
    - [Adapter details](doc/design-adapter.md)
+   - [Turbowarp 扩展](src/pageos-greet-extension.js)
+   - [Scrach 适配细则](doc/Scrach%20适配细则.txt)
 
 ```
 
