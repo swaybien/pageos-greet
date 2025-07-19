@@ -4,6 +4,9 @@
 
 PageOS-Greet 是一个基于 Web 的登录管理器，使用 WebSocket 协议与后端通信。本文档详细说明如何适配自定义登录页面或 Scratch 项目以兼容 PageOS-Greet 系统。
 
+现可考虑使用 [PageOS 环境扩展](https://github.com/swaybien/pageos-extension) 来实现模式判断；
+用 [PageOS 登录管理器扩展](https://github.com/swaybien/pageos-extension/blob/master/src/pageos-login-manager.js) 实现接口适配和图形显示。
+
 ## 2. 登录流程
 
 ```mermaid
@@ -35,6 +38,8 @@ if (
   // 进入登录模式
 }
 ```
+
+可使用 [PageOS 环境扩展](https://github.com/swaybien/pageos-extension/blob/master/src/pageos-env-extension.js) 实现。
 
 ### 3.2 接口适配
 
