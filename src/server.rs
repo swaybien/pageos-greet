@@ -162,9 +162,11 @@ const INDEX_HTML: &str = r#"<!DOCTYPE html>
         border: 0.1rem solid black;
         padding: 0.5rem;
         font-size: smaller;
+        max-height: 10rem;
+        overflow-y: auto;
       }
       .auth-container .warn {
-        color: yellow;
+        color: orange;
       }
       .auth-container .error {
         color: red;
