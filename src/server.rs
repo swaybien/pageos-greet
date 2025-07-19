@@ -136,20 +136,27 @@ const INDEX_HTML: &str = r#"<!DOCTYPE html>
         border: 0.1rem solid black;
         padding: 1rem;
       }
-      .auth-container .interface {
-        display: none;
+      .auth-container .auth-interface {
+        display: flex;
         flex-direction: column;
         gap: 0.5rem;
+      }
+      .loading .auth-interface {
+        display: none;
       }
       .auth-container input {
         box-sizing: border-box;
         width: 100%;
       }
-      .auth-container .loading {
+      .auth-container .load {
+        display: none;
         color: white;
         text-align: center;
         padding: 0.2rem;
         background-color: grey;
+      }
+      .loading .load {
+        display: block;
       }
       .auth-container .log {
         border: 0.1rem solid black;
@@ -165,11 +172,11 @@ const INDEX_HTML: &str = r#"<!DOCTYPE html>
     </style>
   </head>
   <body>
-    <form id="auth">
+    <form id="auth" class="loading">
       <div class="auth-container">
         <h1>PageOS 登录</h1>
-        <span class="loading">正加载</span>
-        <div class="interface">
+        <span class="load">正加载</span>
+        <div class="auth-interface">
           <label class="prompt">
             <div>用户名：</div>
           </label>
@@ -207,26 +214,23 @@ const INDEX_HTML: &str = r#"<!DOCTYPE html>
     <script>
       (function () {
         // 获取表单元素
-        const loadElm = document.querySelector(".auth-container span.loading");
-        const interface = document.querySelector(".auth-container .interface");
-        const promptElm = document.querySelector(
-          ".auth-container label.prompt"
-        );
-        const inputElm = document.querySelector(".auth-container input#input");
-        const submitBtn = document.querySelector(".auth-container .submit-btn");
-        const statusLog = document.querySelector(".auth-container .log");
+        const auth = document.getElementById("auth");
+        const loadElm = auth.querySelector(".auth-container span.load");
+        const ai = auth.querySelector(".auth-container .auth-interface");
+        const promptElm = auth.querySelector(".auth-container label.prompt");
+        const inputElm = auth.querySelector(".auth-container input#input");
+        const submitBtn = auth.querySelector(".auth-container .submit-btn");
+        const statusLog = auth.querySelector(".auth-container .log");
 
         // 显示加载状态
         function showLoading(message = "正加载") {
           loadElm.textContent = message;
-          loadElm.style.display = "block";
-          interface.style.display = "none";
+          auth.classList.add("loading");
         }
 
         // 隐藏加载状态
         function hideLoading() {
-          loadElm.style.display = "none";
-          interface.style.display = "flex";
+          auth.classList.remove("loading");
           inputElm.focus();
         }
 
