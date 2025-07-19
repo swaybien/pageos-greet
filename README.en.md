@@ -52,7 +52,7 @@ _Ey bro, how do I adapt my page or Scratch to use the pageos-greet login manager
 
 Yes! Bro! You just need to do these two things:
 
-1. **Mode Detection**: Determine whether currently in login state.
+1. **Mode Detection**: Determine whether currently in login state. Can use [PageOS environment extension](https://github.com/swaybien/pageos-extension/blob/master/src/pageos-env-extension.js).
    Check the domain and port at the very beginning of page initialization. If matched, initialize and enter the login page.
    For example, if your OS specifies the login page at `127.0.0.1:12801`, the condition would be:
 
@@ -71,14 +71,10 @@ Yes! Bro! You just need to do these two things:
 
    - [Example web page](doc/login.html)
    - [Adapter details](doc/design-adapter.md)
-   - [Turbowarp 扩展](src/pageos-greet-extension.js)
-   - [Scrach 适配细则](doc/Scrach%20适配细则.txt)
-
-```
+   - [PageOS Turbowarp extensions](https://github.com/swaybien/pageos-extension)
 
 ## Project Info
 
 - License: MPL-2.0
 - Repository: https://github.com/swaybien/pageos-greet
 - Keywords: greetd, login, web-server, authentication
-```

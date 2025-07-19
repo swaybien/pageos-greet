@@ -49,7 +49,7 @@ _不是哥们，那我要怎么适配我的页面或 Scratch 以使用 pageos-gr
 
 是！哥们！您只需要做到以下两点：
 
-1. 模式判断：判断当前是否处于登录状态；
+1. 模式判断：判断当前是否处于登录状态，可使用 [PageOS 环境扩展](https://github.com/swaybien/pageos-extension/blob/master/src/pageos-env-extension.js)；
 
    在页面初始化最开始检查域名和端口号，如果匹配则初始化进入登录页面。
    假如您的操作系统规定登录页面在 127.0.0.1:12801，则判断条件为：
@@ -68,8 +68,7 @@ _不是哥们，那我要怎么适配我的页面或 Scratch 以使用 pageos-gr
    
    - [示例网页](doc/login.html)
    - [适配详解](doc/design-adapter.md)
-   - [Turbowarp 扩展](src/pageos-greet-extension.js)
-   - [Scrach 适配细则](doc/Scrach%20适配细则.txt)
+   - [PageOS Turbowarp extensions](https://github.com/swaybien/pageos-extension)
 
 ## 项目信息
 
